@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.API_KEY; // Fetch the API key from environment variables
 
   try {
-    const response = await axios.get('YOUR_API_ENDPOINT', {
+    const response = await axios.get('https://external.transitapp.com/v3/public/stop_departures?global_stop_id=RITECHNY:548', {
       params: {
         api_key: apiKey
       }
