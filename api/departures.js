@@ -2,15 +2,19 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  const apiKey = process.env.API_KEY; // Fetch the API key from environment variables
+  const apiKey = process.env.API_KEY;
   const apiUrl = 'https://external.transitapp.com/v3/public/stop_departures?global_stop_id=RITECHNY:548'; // Hardcoded API endpoint
 
   try {
     const response = await axios.get(apiUrl, {
       headers: {
-        'Authorization': `Bearer ${apiKey}` // Use your API key as a Bearer token or according to API requirements
+        'apiKey': apiKey // Pass the API key as 'apiKey' in the headers
       }
     });
+
+    // Log the response data for debugging purposes (remove in production)
+    console.log('API Response Status:', response.status);
+    console.log('API Response Data:', response.data);
 
     // Ensure the response is in JSON format
     res.status(200).json(response.data);
