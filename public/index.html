@@ -54,62 +54,73 @@
 
     <script>
         function fetchData() {
-            const errorMessage = document.getElementById('errorMessage');
-            const realTimeTableBody = document.querySelector("#outputTable tbody");
-            const scheduledTableBody = document.querySelector("#scheduledTable tbody");
+    const errorMessage = document.getElementById('errorMessage');
+    const realTimeTableBody = document.querySelector("#outputTable tbody");
+    const scheduledTableBody = document.querySelector("#scheduledTable tbody");
 
-            errorMessage.textContent = '';  // Clear previous messages
-            realTimeTableBody.innerHTML = '';  // Clear real-time data
-            scheduledTableBody.innerHTML = '';  // Clear scheduled data
+    errorMessage.textContent = '';  // Clear previous messages
+    realTimeTableBody.innerHTML = '';  // Clear real-time data
+    scheduledTableBody.innerHTML = '';  // Clear scheduled data
 
-            fetch('/api/departures')  // Fetch data from your serverless function
-                .then(response => response.json())
-                .then(data => {
-                    const now = new Date();
-                    const realTimeDepartures = [];
-                    const scheduledDepartures = [];
+    // Call the Vercel serverless function to fetch data from the hardcoded API
+    fetch('/api/departures')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Network response was not ok: ${response.statusText}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Invalid content-type. Expected application/json');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const now = new Date();
+            const realTimeDepartures = [];
+            const scheduledDepartures = [];
 
-                    data.route_departures.forEach(route => {
-                        const routeShortName = route.route_short_name;
-                        const routeLongName = route.route_long_name;
+            data.route_departures.forEach(route => {
+                const routeShortName = route.route_short_name;
+                const routeLongName = route.route_long_name;
 
-                        route.itineraries.forEach(itinerary => {
-                            const headsign = itinerary.headsign;
+                route.itineraries.forEach(itinerary => {
+                    const headsign = itinerary.headsign;
 
-                            const nextRealTimeSchedule = itinerary.schedule_items.find(schedule => {
-                                return schedule.is_real_time && schedule.departure_time * 1000 > now.getTime();
-                            });
-
-                            const nextScheduledSchedule = itinerary.schedule_items.find(schedule => {
-                                const departureTime = schedule.departure_time * 1000;
-                                return !schedule.is_real_time && departureTime > now.getTime() && departureTime <= now.getTime() + (60 * 60 * 1000);
-                            });
-
-                            if (nextRealTimeSchedule) {
-                                realTimeDepartures.push({
-                                    routeName: `${routeLongName} (${routeShortName})`,
-                                    departureTime: nextRealTimeSchedule.departure_time * 1000,
-                                    isRealTime: true
-                                });
-                            }
-
-                            if (nextScheduledSchedule) {
-                                scheduledDepartures.push({
-                                    routeName: `${routeLongName} (${routeShortName})`,
-                                    departureTime: nextScheduledSchedule.departure_time * 1000,
-                                    isRealTime: false
-                                });
-                            }
-                        });
+                    const nextRealTimeSchedule = itinerary.schedule_items.find(schedule => {
+                        return schedule.is_real_time && schedule.departure_time * 1000 > now.getTime();
                     });
 
-                    displayDepartures(realTimeDepartures, realTimeTableBody, now, 'real-time');
-                    displayDepartures(scheduledDepartures, scheduledTableBody, now, 'scheduled');
-                })
-                .catch(error => {
-                    errorMessage.textContent = 'Error fetching data: ' + error.message;
+                    const nextScheduledSchedule = itinerary.schedule_items.find(schedule => {
+                        const departureTime = schedule.departure_time * 1000;
+                        return !schedule.is_real_time && departureTime > now.getTime() && departureTime <= now.getTime() + (60 * 60 * 1000);
+                    });
+
+                    if (nextRealTimeSchedule) {
+                        realTimeDepartures.push({
+                            routeName: `${routeLongName} (${routeShortName})`,
+                            departureTime: nextRealTimeSchedule.departure_time * 1000,
+                            isRealTime: true
+                        });
+                    }
+
+                    if (nextScheduledSchedule) {
+                        scheduledDepartures.push({
+                            routeName: `${routeLongName} (${routeShortName})`,
+                            departureTime: nextScheduledSchedule.departure_time * 1000,
+                            isRealTime: false
+                        });
+                    }
                 });
-        }
+            });
+
+            displayDepartures(realTimeDepartures, realTimeTableBody, now, 'real-time');
+            displayDepartures(scheduledDepartures, scheduledTableBody, now, 'scheduled');
+        })
+        .catch(error => {
+            errorMessage.textContent = 'Error fetching data: ' + error.message;
+            console.error('Fetch error:', error);
+        });
+}
 
         function displayDepartures(departures, tableBody, now, type) {
             departures.sort((a, b) => a.departureTime - b.departureTime);
