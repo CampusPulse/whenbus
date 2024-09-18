@@ -1,0 +1,12 @@
+{
+  "name": "When Bus",
+  "version": "1.0.6",
+  "description": "A project to show bus arrivals at Gleason Circle, powered by Transit.",
+  "main": "index.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "axios": "^0.21.1"
+  }
+}
