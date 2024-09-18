@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transit Departures Display</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        h1 { text-align: center; }
+        #outputTable, #scheduledTable { width: 80%; margin: 20px auto; border-collapse: collapse; }
+        #outputTable th, #outputTable td, #scheduledTable th, #scheduledTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        #outputTable th, #scheduledTable th { background-color: #f2f2f2; }
+        button { display: block; margin: 0 auto; padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        .error { color: red; text-align: center; }
+        h2 { text-align: center; margin-top: 40px; }
+    </style>
+</head>
+<body>
+
+    <h1>Gleason Circle Next Bus Display</h1>
+    <button onclick="fetchData()">Get Departures</button>
+    <p id="errorMessage" class="error"></p>
+
+    <h2>Real-Time Departures</h2>
+    <table id="outputTable">
+        <thead>
+            <tr>
+                <th>Route Name</th>
+                <th>Next Departure (ET)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Real-time parsed data will appear here -->
+        </tbody>
+    </table>
+
+    <h2>Scheduled Departures (Next Hour)</h2>
+    <table id="scheduledTable">
+        <thead>
+            <tr>
+                <th>Route Name</th>
+                <th>Next Departure (ET)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Scheduled parsed data will appear here -->
+        </tbody>
+    </table>
+
+    <script>
+        function fetchData() {
+            const errorMessage = document.getElementById('errorMessage');
+            const realTimeTableBody = document.querySelector("#outputTable tbody");
+            const scheduledTableBody = document.querySelector("#scheduledTable tbody");
+
+            errorMessage.textContent = '';  // Clear previous messages
+            realTimeTableBody.innerHTML = '';  // Clear real-time data
+            scheduledTableBody.innerHTML = '';  // Clear scheduled data
+
+            fetch('/api/departures')  // Fetch data from your serverless function
+                .then(response => response.json())
+                .then(data => {
+                    const now = new Date();
+                    const realTimeDepartures = [];
+                    const scheduledDepartures = [];
+
+                    data.route_departures.forEach(route => {
+                        const routeShortName = route.route_short_name;
+                        const routeLongName = route.route_long_name;
+
+                        route.itineraries.forEach(itinerary => {
+                            const headsign = itinerary.headsign;
+
+                            const nextRealTimeSchedule = itinerary.schedule_items.find(schedule => {
+                                return schedule.is_real_time && schedule.departure_time * 1000 > now.getTime();
+                            });
+
+                            const nextScheduledSchedule = itinerary.schedule_items.find(schedule => {
+                                const departureTime = schedule.departure_time * 1000;
+                                return !schedule.is_real_time && departureTime > now.getTime() && departureTime <= now.getTime() + (60 * 60 * 1000);
+                            });
+
+                            if (nextRealTimeSchedule) {
+                                realTimeDepartures.push({
+                                    routeName: `${routeLongName} (${routeShortName})`,
+                                    departureTime: nextRealTimeSchedule.departure_time * 1000,
+                                    isRealTime: true
+                                });
+                            }
+
+                            if (nextScheduledSchedule) {
+                                scheduledDepartures.push({
+                                    routeName: `${routeLongName} (${routeShortName})`,
+                                    departureTime: nextScheduledSchedule.departure_time * 1000,
+                                    isRealTime: false
+                                });
+                            }
+                        });
+                    });
+
+                    displayDepartures(realTimeDepartures, realTimeTableBody, now, 'real-time');
+                    displayDepartures(scheduledDepartures, scheduledTableBody, now, 'scheduled');
+                })
+                .catch(error => {
+                    errorMessage.textContent = 'Error fetching data: ' + error.message;
+                });
+        }
+
+        function displayDepartures(departures, tableBody, now, type) {
+            departures.sort((a, b) => a.departureTime - b.departureTime);
+
+            if (departures.length > 0) {
+                departures.forEach(departure => {
+                    const departureTimeEastern = new Date(departure.departureTime).toLocaleString("en-US", {
+                        timeZone: "America/New_York",
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    const timeDifference = Math.round((departure.departureTime - now.getTime()) / (1000 * 60));
+
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${departure.routeName}</td>
+                        <td>${departureTimeEastern} (${timeDifference} minutes away)</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td colspan="2">No ${type} departures found.</td>`;
+                tableBody.appendChild(row);
+            }
+        }
+    </script>
+
+</body>
+</html>
