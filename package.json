@@ -4,10 +4,17 @@
   "description": "A project to show bus arrivals at Gleason Circle, powered by Transit.",
   "main": "index.js",
   "scripts": {
-    "start": "vercel dev"
+    "start": "vercel dev",
+    "dev": "webpack serve --mode development"
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "gtfs-realtime-bindings": "^1.1.1"
+    "gtfs-realtime-bindings": "^1.1.1",
+    "html-webpack-plugin": "^5.6.3"
+  },
+  "devDependencies": {
+    "webpack": "^5.96.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0"
   }
 }
